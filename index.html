@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23f2c97d' d='M6 4h20v3l-7 9 7 9v3H6v-3l7-9-7-9V4z'/%3E%3C/svg%3E" />
+  <title>ChronoGranular — 2D Rigid-Body Hourglass Physics Laboratory</title>
+  <style>
+    :root {
+      --bg-0: #070a10;
+      --bg-1: #0d121d;
+      --panel-bg: rgba(15, 21, 34, 0.86);
+      --panel-border: rgba(214, 173, 96, 0.24);
+      --card-bg: rgba(10, 14, 24, 0.72);
+      --card-border: rgba(148, 163, 184, 0.14);
+      --brass-bright: #f2c97d;
+      --brass-mid: #d49b43;
+      --brass-dark: #7c541a;
+      --cyan-glow: #5eead4;
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --emerald: #34d399;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      overflow-x: hidden;
+      background: radial-gradient(circle at 38% 46%, #151e30 0%, #090d16 58%, #05070c 100%);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app-shell {
+      max-width: 1440px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 12px 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 390px;
+      gap: 22px;
+      align-items: center;
+    }
+
+    .stage-panel {
+      position: relative;
+      width: 100%;
+      height: min(850px, calc(100vh - 28px));
+      min-height: 560px;
+      border-radius: 22px;
+      background: radial-gradient(circle at 50% 50%, rgba(26, 38, 62, 0.55) 0%, rgba(8, 12, 21, 0.92) 78%);
+      border: 1px solid var(--panel-border);
+      box-shadow:
+        0 28px 65px rgba(0, 0, 0, 0.65),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .stage-overlay-top {
+      position: absolute;
+      top: 18px;
+      left: 22px;
+      right: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .brand-Cluster {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brand-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--brass-bright);
+    }
+
+    .brand-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-main);
+    }
+
+    .live-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(11, 17, 29, 0.84);
+      border: 1px solid rgba(94, 234, 212, 0.3);
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 12px;
+      color: var(--cyan-glow);
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 10px var(--emerald);
+    }
+
+    #simCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .stage-overlay-bottom {
+      position: absolute;
+      bottom: 16px;
+      left: 22px;
+      right: 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: none;
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      z-index: 2;
+    }
+
+    .control-panel {
+      width: 100%;
+      border-radius: 22px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--panel-border);
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .panel-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      color: var(--brass-bright);
+    }
+
+    .panel-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .hud-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 10px 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+    }
+
+    .value-badge {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--brass-bright);
+      background: rgba(212, 155, 67, 0.14);
+      border: 1px solid rgba(242, 201, 125, 0.34);
+      padding: 3px 9px;
+      border-radius: 7px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 7px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #1e293b 0%, #334155 100%);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff5d6 0%, #f2c97d 45%, #b7791f 100%);
+      border: 2px solid #0f172a;
+      box-shadow: 0 0 12px rgba(242, 201, 125, 0.65);
+      cursor: pointer;
+    }
+
+    .preset-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .btn-preset, .btn-action {
+      appearance: none;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(22, 31, 48, 0.85);
+      color: var(--text-main);
+      border-radius: 9px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-preset:hover, .btn-action:hover {
+      border-color: var(--brass-bright);
+      background: rgba(212, 155, 67, 0.18);
+    }
+
+    .btn-preset.active {
+      border-color: var(--brass-bright);
+      background: rgba(212, 155, 67, 0.24);
+      color: var(--brass-bright);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(30, 41, 59, 0.9);
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.14);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--brass-mid) 0%, var(--brass-bright) 60%, var(--cyan-glow) 100%);
+      transition: width 0.06s linear;
+    }
+
+    .rotation-gauge-layout {
+      display: grid;
+      grid-template-columns: 136px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .arc-gauge-wrap {
+      position: relative;
+      width: 136px;
+      height: 136px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .arc-gauge-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      pointer-events: none;
+      gap: 2px;
+    }
+
+    .arc-gauge-kicker {
+      font-size: 9px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .arc-gauge-time {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--brass-bright);
+    }
+
+    .arc-gauge-angle {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 11px;
+      color: var(--cyan-glow);
+    }
+
+    .chamber-bar {
+      display: flex;
+      width: 100%;
+      height: 11px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #141c2b;
+      border: 1px solid rgba(242, 201, 125, 0.25);
+    }
+
+    .chamber-seg-top {
+      background: linear-gradient(90deg, #fde68a 0%, #f59e0b 100%);
+    }
+
+    .chamber-seg-neck {
+      background: linear-gradient(90deg, #38bdf8 0%, #5eead4 100%);
+    }
+
+    .chamber-seg-bottom {
+      background: linear-gradient(90deg, #d97706 0%, #92400e 100%);
+    }
+
+    .chamber-inline-summary {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 11.5px;
+      color: var(--text-main);
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(242, 201, 125, 0.18);
+      border-radius: 8px;
+      padding: 6px 10px;
+      text-align: center;
+      letter-spacing: 0.02em;
+    }
+
+    .chamber-inline-summary span {
+      color: var(--brass-bright);
+      font-weight: 700;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .metric-box {
+      background: rgba(15, 23, 42, 0.72);
+      border: 1px solid rgba(148, 163, 184, 0.12);
+      border-radius: 9px;
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .metric-name {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+    }
+
+    .metric-val {
+      font-family: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .metric-val.ok {
+      color: var(--emerald);
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .btn-primary {
+      border-color: rgba(242, 201, 125, 0.48);
+      background: linear-gradient(180deg, rgba(212, 155, 67, 0.32) 0%, rgba(124, 84, 26, 0.38) 100%);
+      color: var(--brass-bright);
+    }
+
+    @media (max-width: 1024px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        padding: 14px;
+        gap: 16px;
+      }
+
+      .stage-panel {
+        height: 580px;
+        min-height: 480px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .app-shell {
+        padding: 10px;
+        gap: 12px;
+      }
+
+      .stage-panel {
+        height: 460px;
+        min-height: 420px;
+      }
+
+      .brand-title {
+        font-size: 16px;
+      }
+
+      .action-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="stage-panel">
+      <div class="stage-overlay-top">
+        <div class="brand-Cluster">
+          <span class="brand-kicker">Precision Granular Mechanics</span>
+          <h1 class="brand-title">ChronoGranular 150-Bead Hourglass</h1>
+        </div>
+        <div class="live-pill">
+          <span class="live-dot"></span>
+          <span id="statusBadgeText">150 RIGID GRAINS · 10× SUBSTEP</span>
+        </div>
+      </div>
+
+      <canvas id="simCanvas" width="820" height="760"></canvas>
+
+      <div class="stage-overlay-bottom">
+        <span id="simClockReadout">SIM TIME: 0.00s</span>
+        <span id="vesselPoseReadout">POSE: 0.0° · ω: 0.00 rad/s</span>
+      </div>
+    </section>
+
+    <aside class="control-panel" aria-label="Simulation Controls">
+      <header class="panel-header">
+        <div>
+          <div class="panel-title">Instrument Control Deck</div>
+          <div class="panel-subtitle">Real-time orifice &amp; kinematics telemetry</div>
+        </div>
+        <span class="value-badge" id="fpsReadout">60 FPS</span>
+      </header>
+
+      <div class="hud-card">
+        <div class="card-row">
+          <label class="card-label" for="neckWidthSlider">Neck Orifice Width</label>
+          <span class="value-badge" id="neckWidthValue">36 px</span>
+        </div>
+        <input
+          type="range"
+          id="neckWidthSlider"
+          min="16"
+          max="76"
+          step="1"
+          value="36"
+        />
+        <div class="preset-row">
+          <button type="button" class="btn-preset" id="presetNarrow" data-neck="20">Narrow 20px</button>
+          <button type="button" class="btn-preset active" id="presetStandard" data-neck="36">Standard 36px</button>
+          <button type="button" class="btn-preset" id="presetWide" data-neck="68">Wide 68px</button>
+        </div>
+      </div>
+
+      <div class="hud-card">
+        <div class="card-row">
+          <span class="card-label">8.0s Automatic 180° Rotation</span>
+          <span class="value-badge" id="flipCycleStateBadge">CHRONO ACTIVE</span>
+        </div>
+        <div class="rotation-gauge-layout">
+          <div class="arc-gauge-wrap">
+            <svg width="136" height="136" viewBox="0 0 136 136" aria-hidden="true">
+              <defs>
+                <linearGradient id="brassArcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#fde68a" />
+                  <stop offset="55%" stop-color="#f59e0b" />
+                  <stop offset="100%" stop-color="#5eead4" />
+                </linearGradient>
+              </defs>
+              <circle cx="68" cy="68" r="58" fill="rgba(8, 12, 22, 0.75)" stroke="rgba(212, 155, 67, 0.22)" stroke-width="1.2" />
+              <circle cx="68" cy="68" r="49" fill="none" stroke="rgba(30, 41, 59, 0.95)" stroke-width="8" />
+              <circle
+                id="flipArcCircle"
+                cx="68"
+                cy="68"
+                r="49"
+                fill="none"
+                stroke="url(#brassArcGrad)"
+                stroke-width="8"
+                stroke-linecap="round"
+                stroke-dasharray="307.88"
+                stroke-dashoffset="307.88"
+                transform="rotate(-90 68 68)"
+              />
+              <polygon points="68,6 64,15 72,15" fill="#f2c97d" />
+            </svg>
+            <div class="arc-gauge-center">
+              <span class="arc-gauge-kicker">Next 180°</span>
+              <span class="arc-gauge-time" id="flipCountdownBadge">Next Flip: 8.0s</span>
+              <span class="arc-gauge-angle" id="angleDegValue">0.0°</span>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="metric-box">
+              <span class="metric-name">Completed Flips</span>
+              <span class="metric-val" id="flipCountValue">0</span>
+            </div>
+            <div class="metric-box">
+              <span class="metric-name">Cycle Progress</span>
+              <div class="progress-track" style="margin-top: 4px;">
+                <div class="progress-fill" id="flipProgressFill"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-card">
+        <div class="card-row">
+          <span class="card-label">Chamber Distribution</span>
+          <span class="value-badge" id="flowRateBadge">0.0 grains/s</span>
+        </div>
+        <div class="chamber-bar">
+          <div class="chamber-seg-top" id="barTop" style="width: 100%"></div>
+          <div class="chamber-seg-neck" id="barNeck" style="width: 0%"></div>
+          <div class="chamber-seg-bottom" id="barBottom" style="width: 0%"></div>
+        </div>
+        <div class="chamber-inline-summary">
+          Top: <span id="topCountValue">150</span> | Neck: <span id="neckCountValue">0</span> | Bottom: <span id="bottomCountValue">0</span>
+        </div>
+      </div>
+
+      <div class="hud-card">
+        <div class="card-row">
+          <span class="card-label">Physics Invariant Guard</span>
+          <span class="value-badge" id="invariantStatusBadge">VERIFIED</span>
+        </div>
+        <div class="telemetry-grid">
+          <div class="metric-box">
+            <span class="metric-name">Max Bead Overlap</span>
+            <span class="metric-val ok" id="maxOverlapValue">0.000 px</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-name">Wall Penetration</span>
+            <span class="metric-val ok" id="maxWallPenValue">0.000 px</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-name">Radius Spread</span>
+            <span class="metric-val" id="radiusRangeValue">3.8–7.0 px</span>
+          </div>
+          <div class="metric-box">
+            <span class="metric-name">Escaped Grains</span>
+            <span class="metric-val ok" id="escapedCountValue">0 / 150</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-card">
+        <div class="card-row">
+          <label class="card-label" for="gravitySlider">Gravity Field</label>
+          <span class="value-badge" id="gravityValue">680 px/s²</span>
+        </div>
+        <input
+          type="range"
+          id="gravitySlider"
+          min="320"
+          max="1100"
+          step="10"
+          value="680"
+        />
+        <div class="action-grid">
+          <button type="button" class="btn-action btn-primary" id="flipNowBtn">Flip 180° Now</button>
+          <button type="button" class="btn-action" id="pauseBtn">Pause</button>
+          <button type="button" class="btn-action" id="resetBtn">Reset</button>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    (function () {
+      const { abs, min, max, sqrt, hypot, sin, cos, floor, round, PI } = Math;
+      const LocalSet = Set;
+      const LocalNumber = Number;
+      const PARTICLE_COUNT = 150;
+      const MIN_RADIUS = 3.8;
+      const MAX_RADIUS = 7.0;
+      const H = 215;
+      const V_SHOULDER = 115;
+      const W_BULB = 128;
+      const W_CAP = 114;
+      const FLIP_PERIOD = 8.0;
+      const FLIP_DURATION = 1.4;
+      const SUBSTEPS = 6;
+      const POS_ITERS = 5;
+
+      const BEAD_PALETTES = [
+        { name: 'Amber Silica', hi: '#fffbeb', mid: '#f59e0b', lo: '#78350f', rim: '#fde68a', band: 'rgba(255, 251, 235, 0.45)' },
+        { name: 'Brushed Brass', hi: '#fef9c3', mid: '#d49b43', lo: '#452708', rim: '#f2c97d', band: 'rgba(254, 240, 138, 0.5)' },
+        { name: 'Alabaster Pearl', hi: '#ffffff', mid: '#cbd5e1', lo: '#334155', rim: '#f8fafc', band: 'rgba(255, 255, 255, 0.55)' },
+        { name: 'Copper Garnet', hi: '#ffedd5', mid: '#ea580c', lo: '#5c1406', rim: '#fdba74', band: 'rgba(254, 215, 170, 0.44)' },
+        { name: 'Smoked Obsidian', hi: '#cbd5e1', mid: '#475569', lo: '#0f172a', rim: '#94a3b8', band: 'rgba(226, 232, 240, 0.36)' }
+      ];
+
+      const canvas = document.getElementById('simCanvas');
+      const ctx = canvas.getContext('2d');
+
+      let cx = 410;
+      let cy = 380;
+      let neckWidth = 36;
+      let gravity = 680;
+      let restitution = 0.42;
+      let simTime = 0;
+      let angle = 0;
+      let angularVelocity = 0;
+      let manualAngleOffset = 0;
+      let manualFlipActive = false;
+      let manualFlipElapsed = 0;
+      let paused = false;
+      let fpsSmooth = 60;
+      let crossingTimestamps = [];
+      let cachedInvariants = null;
+      let invariantsDirty = true;
+
+      const particles = [];
+      const uArr = new Float64Array(PARTICLE_COUNT);
+      const vArr = new Float64Array(PARTICLE_COUNT);
+      const candI = new Int32Array(PARTICLE_COUNT * PARTICLE_COUNT);
+      const candJ = new Int32Array(PARTICLE_COUNT * PARTICLE_COUNT);
+
+      function wallHalfWidth(v, wNeck) {
+        const av = min(H, abs(v));
+        if (av <= V_SHOULDER) {
+          const k = PI / (2 * V_SHOULDER);
+          const s = sin(k * av);
+          return wNeck + (W_BULB - wNeck) * s * s;
+        }
+        const q = (av - V_SHOULDER) / (H - V_SHOULDER);
+        return W_BULB - (W_BULB - W_CAP) * q * q;
+      }
+
+      function wallSlope(v, wNeck) {
+        if (v === 0) return 0;
+        const sign = v >= 0 ? 1 : -1;
+        const av = min(H, abs(v));
+        if (av <= V_SHOULDER) {
+          const k = PI / (2 * V_SHOULDER);
+          return sign * (W_BULB - wNeck) * k * sin(2 * k * av);
+        }
+        const q = (av - V_SHOULDER) / (H - V_SHOULDER);
+        return -sign * 2 * (W_BULB - W_CAP) * q / (H - V_SHOULDER);
+      }
+
+      function maxSafeAbsU(v, r, wNeck) {
+        const w = wallHalfWidth(v, wNeck);
+        const dw = wallSlope(v, wNeck);
+        return max(0, w - r * sqrt(1 + dw * dw));
+      }
+
+      function computeWallContact(u, v, r, wNeck) {
+        const side = u >= 0 ? 1 : -1;
+        const absU = abs(u);
+        let vStar = max(-H, min(H, v));
+        for (let k = 0; k < 3; k++) {
+          const wv = wallHalfWidth(vStar, wNeck);
+          const dw = wallSlope(vStar, wNeck);
+          const f = (wv - absU) * dw + (vStar - v);
+          const df = 1 + dw * dw;
+          vStar = max(-H, min(H, vStar - 0.85 * (f / df)));
+        }
+        const wStar = wallHalfWidth(vStar, wNeck);
+        const dwStar = wallSlope(vStar, wNeck);
+        const invHypot = 1 / sqrt(1 + dwStar * dwStar);
+        const nu = -side * invHypot;
+        const nv = dwStar * invHypot;
+        const signedDist = (u - side * wStar) * nu + (v - vStar) * nv;
+        return { side, vStar, wStar, dwStar, nu, nv, signedDist };
+      }
+
+      function clampParticleToVesselLocal(u, v, r, wNeck) {
+        let curU = u;
+        let curV = max(-H + r, min(H - r, v));
+        const wAtV = wallHalfWidth(curV, wNeck);
+        if (abs(curU) <= wAtV - r * 2.5) {
+          return { u: curU, v: curV, pinned: 0, nu: 0, nv: 0 };
+        }
+        if (abs(curU) > wAtV) {
+          curU = (curU >= 0 ? 1 : -1) * wAtV;
+        }
+        let pinned = 0;
+        let lastNu = 0;
+        let lastNv = 0;
+        for (let pass = 0; pass < 2; pass++) {
+          const c = computeWallContact(curU, curV, r, wNeck);
+          if (c.signedDist < r + 0.02) {
+            pinned = 1;
+            lastNu = c.nu;
+            lastNv = c.nv;
+          }
+          if (c.signedDist < r) {
+            const pen = (r - c.signedDist) + 1e-4;
+            curU += c.nu * pen;
+            curV += c.nv * pen;
+          }
+          if (curV <= -H + r + 0.02) {
+            curV = -H + r;
+            pinned = 1;
+            lastNu = 0;
+            lastNv = 1;
+          } else if (curV >= H - r - 0.02) {
+            curV = H - r;
+            pinned = 1;
+            lastNu = 0;
+            lastNv = -1;
+          }
+        }
+        return { u: curU, v: curV, pinned, nu: lastNu, nv: lastNv };
+      }
+
+      function updateRotationKinematics(dt) {
+        let baseAngle = 0;
+        let baseOmega = 0;
+
+        if (simTime >= FLIP_PERIOD) {
+          const flipIndex = floor(simTime / FLIP_PERIOD);
+          const elapsed = simTime - flipIndex * FLIP_PERIOD;
+          if (elapsed < FLIP_DURATION) {
+            const tau = max(0, min(1, elapsed / FLIP_DURATION));
+            const s = tau * tau * tau * (tau * (tau * 6 - 15) + 10);
+            const ds = (30 * tau * tau * (tau - 1) * (tau - 1)) / FLIP_DURATION;
+            baseAngle = (flipIndex - 1) * PI + PI * s;
+            baseOmega = PI * ds;
+          } else {
+            baseAngle = flipIndex * PI;
+            baseOmega = 0;
+          }
+        }
+
+        let extraOmega = 0;
+        let extraAngle = manualAngleOffset;
+        if (manualFlipActive) {
+          manualFlipElapsed += dt;
+          if (manualFlipElapsed < FLIP_DURATION) {
+            const tau = max(0, min(1, manualFlipElapsed / FLIP_DURATION));
+            const s = tau * tau * tau * (tau * (tau * 6 - 15) + 10);
+            const ds = (30 * tau * tau * (tau - 1) * (tau - 1)) / FLIP_DURATION;
+            extraAngle = manualAngleOffset + PI * s;
+            extraOmega = PI * ds;
+          } else {
+            manualAngleOffset += PI;
+            extraAngle = manualAngleOffset;
+            manualFlipActive = false;
+            manualFlipElapsed = 0;
+          }
+        }
+
+        angle = baseAngle + extraAngle;
+        angularVelocity = baseOmega + extraOmega;
+      }
+
+      function createParticles() {
+        particles.length = 0;
+        const wNeck = neckWidth * 0.5;
+        const radii = [];
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          const frac = i / (PARTICLE_COUNT - 1);
+          const golden = (i * 0.618033988749895) % 1;
+          const blend = 0.82 * frac + 0.18 * golden;
+          const r = MIN_RADIUS + (MAX_RADIUS - MIN_RADIUS) * max(0, min(1, blend));
+          radii.push(r);
+        }
+        radii[0] = MIN_RADIUS;
+        radii[PARTICLE_COUNT - 1] = MAX_RADIUS;
+
+        const ordered = [];
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+          ordered.push(radii[(i * 37) % PARTICLE_COUNT]);
+        }
+
+        let idx = 0;
+        let vCursor = -32;
+        let rowIdx = 0;
+
+        while (idx < PARTICLE_COUNT) {
+          const maxR = MAX_RADIUS;
+          const vRow = max(-H + maxR + 4, vCursor);
+          const halfSpan = max(12, maxSafeAbsU(vRow, maxR + 1.2, wNeck));
+          let uCursor = -halfSpan + ordered[idx];
+          const rowParticles = [];
+
+          while (idx < PARTICLE_COUNT) {
+            const r = ordered[idx];
+            if (uCursor + r > halfSpan && rowParticles.length > 0) break;
+            const uPos = max(-halfSpan + r, min(halfSpan - r, uCursor));
+            rowParticles.push({ u: uPos, v: vRow, r });
+            uCursor += 2 * r + 1.1;
+            idx++;
+          }
+
+          if (rowParticles.length > 0) {
+            const leftMargin = -halfSpan + rowParticles[0].r;
+            const rightMargin = halfSpan - rowParticles[rowParticles.length - 1].r;
+            const usedSpan = rowParticles[rowParticles.length - 1].u - rowParticles[0].u;
+            const totalSpan = rightMargin - leftMargin;
+            const shift = (totalSpan - usedSpan) * 0.5 + (rowIdx % 2 === 0 ? -0.6 : 0.6);
+            for (let k = 0; k < rowParticles.length; k++) {
+              const item = rowParticles[k];
+              const pId = particles.length;
+              const uCentered = max(
+                -halfSpan + item.r,
+                min(halfSpan - item.r, leftMargin + (item.u - rowParticles[0].u) + shift)
+              );
+              const clamped = clampParticleToVesselLocal(uCentered, item.v, item.r, wNeck);
+              const mass = PI * item.r * item.r;
+              particles.push({
+                id: pId,
+                x: cx + clamped.u,
+                y: cy + clamped.v,
+                vx: ((pId % 7) - 3) * 1.2,
+                vy: 6 + (pId % 5) * 2,
+                r: item.r,
+                mass,
+                invMass: 1 / mass,
+                angle: (pId * 1.17) % (PI * 2),
+                omega: 0,
+                materialIdx: pId % BEAD_PALETTES.length,
+                prevWorldSide: -1
+              });
+            }
+          }
+
+          vCursor -= (2 * MAX_RADIUS + 1.35);
+          rowIdx++;
+        }
+
+        projectPositionsExact(12);
+        invariantsDirty = true;
+      }
+
+      function resolveCircleVelocities(cosA, sinA, wNeck) {
+        const n = particles.length;
+        for (let i = 0; i < n; i++) {
+          const pi = particles[i];
+          for (let j = i + 1; j < n; j++) {
+            const pj = particles[j];
+            const dx = pj.x - pi.x;
+            const dy = pj.y - pi.y;
+            const minDist = pi.r + pj.r;
+            if (abs(dx) >= minDist || abs(dy) >= minDist) continue;
+            const d2 = dx * dx + dy * dy;
+            if (d2 >= minDist * minDist) continue;
+
+            const dist = sqrt(d2) || 1e-6;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const rvx = pj.vx - pi.vx;
+            const rvy = pj.vy - pi.vy;
+            const vn = rvx * nx + rvy * ny;
+            if (vn >= 0) continue;
+
+            const e = -vn > 35 ? restitution : 0;
+            const invMassSum = pi.invMass + pj.invMass;
+            const jn = -(1 + e) * vn / invMassSum;
+            const impX = jn * nx;
+            const impY = jn * ny;
+
+            pi.vx -= impX * pi.invMass;
+            pi.vy -= impY * pi.invMass;
+            pj.vx += impX * pj.invMass;
+            pj.vy += impY * pj.invMass;
+
+            const tx = -ny;
+            const ty = nx;
+            const vt = rvx * tx + rvy * ty + (pi.omega * pi.r + pj.omega * pj.r) * 0.25;
+            const mu = wNeck < 14 ? 0.12 : 0.025;
+            const jtMax = mu * jn;
+            const jt = max(-jtMax, min(jtMax, -vt / invMassSum));
+            pi.vx -= jt * tx * pi.invMass;
+            pi.vy -= jt * ty * pi.invMass;
+            pj.vx += jt * tx * pj.invMass;
+            pj.vy += jt * ty * pj.invMass;
+            pi.omega -= (jt * pi.invMass) / pi.r;
+            pj.omega -= (jt * pj.invMass) / pj.r;
+          }
+        }
+      }
+
+      function resolveWallVelocities(cosA, sinA, wNeck) {
+        const n = particles.length;
+        for (let i = 0; i < n; i++) {
+          const p = particles[i];
+          const rx = p.x - cx;
+          const ry = p.y - cy;
+          const u = rx * cosA + ry * sinA;
+          const v = -rx * sinA + ry * cosA;
+
+          const wAtV = wallHalfWidth(v, wNeck);
+          if (abs(u) > wAtV - p.r * 1.95) {
+            const c = computeWallContact(u, v, p.r, wNeck);
+            if (c.signedDist < p.r + 0.35) {
+              const nx = c.nu * cosA - c.nv * sinA;
+              const ny = c.nu * sinA + c.nv * cosA;
+              const vwx = -angularVelocity * ry;
+              const vwy = angularVelocity * rx;
+              const rvx = p.vx - vwx;
+              const rvy = p.vy - vwy;
+              const vn = rvx * nx + rvy * ny;
+              if (vn < 0) {
+                const e = -vn > 38 ? restitution * 0.75 : 0;
+                const jn = -(1 + e) * vn;
+                p.vx += jn * nx;
+                p.vy += jn * ny;
+
+                const tx = -ny;
+                const ty = nx;
+                const vt = rvx * tx + rvy * ty;
+                const mu = (abs(v) < 35 && wNeck < 14) ? 0.14 : 0.02;
+                const jt = max(-mu * jn, min(mu * jn, -vt));
+                p.vx += jt * tx;
+                p.vy += jt * ty;
+                p.omega = max(-18, min(18, -vt / p.r));
+              }
+            }
+          }
+
+          if (v < -H + p.r + 0.35 || v > H - p.r - 0.35) {
+            const nvLocal = v < 0 ? 1 : -1;
+            const nx = -nvLocal * sinA;
+            const ny = nvLocal * cosA;
+            const vwx = -angularVelocity * ry;
+            const vwy = angularVelocity * rx;
+            const rvx = p.vx - vwx;
+            const rvy = p.vy - vwy;
+            const vn = rvx * nx + rvy * ny;
+            if (vn < 0) {
+              const e = -vn > 38 ? restitution * 0.6 : 0;
+              p.vx += -(1 + e) * vn * nx;
+              p.vy += -(1 + e) * vn * ny;
+            }
+          }
+        }
+      }
+
+      const pairI = new Int32Array(PARTICLE_COUNT * PARTICLE_COUNT);
+      const pairJ = new Int32Array(PARTICLE_COUNT * PARTICLE_COUNT);
+
+      function buildPairs(n, thresh) {
+        let count = 0;
+        for (let i = 0; i < n; i++) {
+          const ui = uArr[i];
+          const vi = vArr[i];
+          for (let j = i + 1; j < n; j++) {
+            if (abs(uArr[j] - ui) < thresh && abs(vArr[j] - vi) < thresh) {
+              pairI[count] = i;
+              pairJ[count] = j;
+              count++;
+            }
+          }
+        }
+        return count;
+      }
+
+      function projectPositionsExact(iterations) {
+        const cosA = cos(angle);
+        const sinA = sin(angle);
+        const wNeck = neckWidth * 0.5;
+        const n = particles.length;
+
+        for (let i = 0; i < n; i++) {
+          const p = particles[i];
+          const rx = p.x - cx;
+          const ry = p.y - cy;
+          const u0 = rx * cosA + ry * sinA;
+          const v0 = -rx * sinA + ry * cosA;
+          const cl = clampParticleToVesselLocal(u0, v0, p.r, wNeck);
+          uArr[i] = cl.u;
+          vArr[i] = cl.v;
+        }
+
+        const isFinalPass = iterations >= 10;
+        let pairCount = buildPairs(n, 25);
+        const maxPasses = isFinalPass ? 140 : iterations;
+        const gSign = cosA >= 0 ? 1 : -1;
+
+        for (let iter = 0; iter < maxPasses; iter++) {
+          if (isFinalPass && (iter === 28 || iter === 75)) {
+            pairCount = buildPairs(n, 25);
+          }
+
+          let maxPen = 0;
+          const forward = (iter & 1) === 0;
+          const startK = forward ? 0 : pairCount - 1;
+          const endK = forward ? pairCount : -1;
+          const stepK = forward ? 1 : -1;
+
+          for (let k = startK; k !== endK; k += stepK) {
+            const i = pairI[k];
+            const j = pairJ[k];
+            const pi = particles[i];
+            const pj = particles[j];
+            let du = uArr[j] - uArr[i];
+            let dv = vArr[j] - vArr[i];
+            const minDist = pi.r + pj.r + (isFinalPass ? 2.5e-4 : 1e-4);
+            if (abs(du) >= minDist || abs(dv) >= minDist) continue;
+            let d2 = du * du + dv * dv;
+            if (d2 >= minDist * minDist) continue;
+
+            const invMassSum = pi.invMass + pj.invMass;
+            const wi = pi.invMass / invMassSum;
+            const wj = pj.invMass / invMassSum;
+
+            if (!isFinalPass || iter < 30) {
+              const limitUi = maxSafeAbsU(vArr[i], pi.r, wNeck);
+              const limitUj = maxSafeAbsU(vArr[j], pj.r, wNeck);
+              const corridorSpan = limitUi + limitUj;
+              if (corridorSpan < minDist + 0.8 && abs(dv) < minDist) {
+                const reqDv = sqrt(max(0.01, minDist * minDist - min(du * du, corridorSpan * corridorSpan * 0.9)));
+                const dirV = dv > 1e-5 ? 1 : (dv < -1e-5 ? -1 : (i < j ? -1 : 1));
+                const penV = max(0, reqDv - abs(dv));
+                if (penV > maxPen) maxPen = penV;
+                vArr[i] -= dirV * penV * wi;
+                vArr[j] += dirV * penV * wj;
+                du = uArr[j] - uArr[i];
+                dv = vArr[j] - vArr[i];
+                d2 = du * du + dv * dv;
+              }
+            }
+
+            const dist = sqrt(d2) || 1e-6;
+            if (dist < minDist) {
+              const pen = (minDist - dist) + (isFinalPass ? 1.5e-4 : 0);
+              if (pen > maxPen) maxPen = pen;
+              const nu = du / dist;
+              const nv = dv / dist;
+              const relax = (isFinalPass && iter >= 30 && iter < 105) ? 1.16 : 1.0;
+
+              const uTryI = uArr[i] - nu * pen * wi * relax;
+              const vTryI = vArr[i] - nv * pen * wi * relax;
+              const uTryJ = uArr[j] + nu * pen * wj * relax;
+              const vTryJ = vArr[j] + nv * pen * wj * relax;
+              const cli = clampParticleToVesselLocal(uTryI, vTryI, pi.r, wNeck);
+              const clj = clampParticleToVesselLocal(uTryJ, vTryJ, pj.r, wNeck);
+              const iHitsWall = abs(cli.u - uTryI) + abs(cli.v - vTryI) > 1e-5;
+              const jHitsWall = abs(clj.u - uTryJ) + abs(clj.v - vTryJ) > 1e-5;
+
+              if (!iHitsWall && !jHitsWall) {
+                uArr[i] = cli.u; vArr[i] = cli.v;
+                uArr[j] = clj.u; vArr[j] = clj.v;
+              } else if (iHitsWall && !jHitsWall) {
+                uArr[i] = cli.u; vArr[i] = cli.v;
+                const cljFull = clampParticleToVesselLocal(uArr[j] + nu * pen * relax, vArr[j] + nv * pen * relax, pj.r, wNeck);
+                uArr[j] = cljFull.u; vArr[j] = cljFull.v;
+              } else if (!iHitsWall && jHitsWall) {
+                uArr[j] = clj.u; vArr[j] = clj.v;
+                const cliFull = clampParticleToVesselLocal(uArr[i] - nu * pen * relax, vArr[i] - nv * pen * relax, pi.r, wNeck);
+                uArr[i] = cliFull.u; vArr[i] = cliFull.v;
+              } else {
+                uArr[i] = cli.u; vArr[i] = cli.v;
+                uArr[j] = clj.u; vArr[j] = clj.v;
+              }
+
+              if ((!isFinalPass && iter >= 4 && pen > 0.02) || (isFinalPass && iter >= 6 && iter < 85 && pen > 0.012)) {
+                const rdu = uArr[j] - uArr[i];
+                const rdv = vArr[j] - vArr[i];
+                if (abs(rdu) > abs(rdv) * 0.55) {
+                  const vMid = 0.5 * (vArr[i] + vArr[j]);
+                  const vGrav = vMid * gSign;
+                  const escapeDirV = (vGrav < 0) ? -gSign : (vGrav < 65 ? gSign : -gSign);
+                  const target = (escapeDirV < 0) ? (vArr[i] <= vArr[j] ? i : j) : (vArr[i] >= vArr[j] ? i : j);
+                  const other = target === i ? j : i;
+                  const pt = particles[target];
+                  const po = particles[other];
+                  const clT = clampParticleToVesselLocal(uArr[target], vArr[target] + escapeDirV * pen * 0.75, pt.r, wNeck);
+                  const clO = clampParticleToVesselLocal(uArr[other], vArr[other] - escapeDirV * pen * 0.25, po.r, wNeck);
+                  uArr[target] = clT.u; vArr[target] = clT.v;
+                  uArr[other] = clO.u; vArr[other] = clO.v;
+                }
+              }
+            }
+          }
+
+          if (iter >= 2 && maxPen < 0.0005) break;
+        }
+
+        for (let i = 0; i < n; i++) {
+          const cl = clampParticleToVesselLocal(uArr[i], vArr[i], particles[i].r, wNeck);
+          particles[i].x = cx + cl.u * cosA - cl.v * sinA;
+          particles[i].y = cy + cl.u * sinA + cl.v * cosA;
+        }
+        invariantsDirty = true;
+      }
+
+      const prevX = new Float64Array(PARTICLE_COUNT);
+      const prevY = new Float64Array(PARTICLE_COUNT);
+
+      function step(dt) {
+        const clampedDt = min(max(dt, 1 / 240), 1 / 20);
+        const dtSub = clampedDt / SUBSTEPS;
+
+        for (let s = 0; s < SUBSTEPS; s++) {
+          simTime += dtSub;
+          updateRotationKinematics(dtSub);
+
+          const cosA = cos(angle);
+          const sinA = sin(angle);
+          const wNeck = neckWidth * 0.5;
+          const n = particles.length;
+
+          for (let i = 0; i < n; i++) {
+            const p = particles[i];
+            p.vy += gravity * dtSub;
+
+            const rx = p.x - cx;
+            const ry = p.y - cy;
+            const u = rx * cosA + ry * sinA;
+            const v = -rx * sinA + ry * cosA;
+            if (abs(v) < 46 && wNeck < 16) {
+              const squeeze = max(0, (16 - wNeck) / 6);
+              const damp = 1 / (1 + squeeze * squeeze * 45 * dtSub);
+              p.vx *= damp;
+              p.vy *= damp;
+            } else if (p.y < cy - 3 && abs(u) > 3 && abs(v) < V_SHOULDER && wNeck >= 16 && abs(angularVelocity) < 0.05) {
+              const funnelX = -u * cosA * 16;
+              const funnelY = -u * sinA * 16;
+              p.vx += funnelX * dtSub;
+              p.vy += funnelY * dtSub;
+            }
+
+            p.vx *= 0.9993;
+            p.vy *= 0.9993;
+            p.omega *= 0.995;
+
+            const vwx = -angularVelocity * ry;
+            const vwy = angularVelocity * rx;
+            const relVx = p.vx - vwx;
+            const relVy = p.vy - vwy;
+            const relSpeed = sqrt(relVx * relVx + relVy * relVy);
+            if (relSpeed > 620) {
+              const scale = 620 / relSpeed;
+              p.vx = vwx + relVx * scale;
+              p.vy = vwy + relVy * scale;
+            }
+
+            p.x += p.vx * dtSub;
+            p.y += p.vy * dtSub;
+            p.angle += p.omega * dtSub;
+            prevX[i] = p.x;
+            prevY[i] = p.y;
+          }
+
+          resolveCircleVelocities(cosA, sinA, wNeck);
+          resolveWallVelocities(cosA, sinA, wNeck);
+          projectPositionsExact(POS_ITERS);
+
+          const velGain = abs(angularVelocity) > 0.05 ? 0.75 : (wNeck < 15 ? 0.02 : 0.16);
+          for (let i = 0; i < n; i++) {
+            const p = particles[i];
+            p.vx += ((p.x - prevX[i]) / dtSub) * velGain;
+            p.vy += ((p.y - prevY[i]) / dtSub) * velGain;
+            const worldSide = p.y >= cy ? 1 : -1;
+            if (p.prevWorldSide < 0 && worldSide > 0) {
+              crossingTimestamps.push(simTime);
+            }
+            p.prevWorldSide = worldSide;
+          }
+          resolveWallVelocities(cosA, sinA, wNeck);
+        }
+
+        projectPositionsExact(16);
+
+        const cutoff = simTime - 2.0;
+        while (crossingTimestamps.length > 0 && crossingTimestamps[0] < cutoff) {
+          crossingTimestamps.shift();
+        }
+        invariantsDirty = true;
+      }
+
+      function checkInvariants() {
+        if (!invariantsDirty && cachedInvariants) {
+          return cachedInvariants;
+        }
+        const cosA = cos(angle);
+        const sinA = sin(angle);
+        const wNeck = neckWidth * 0.5;
+        const n = particles.length;
+        const radiiSet = new LocalSet();
+        let minR = Infinity;
+        let maxR = -Infinity;
+        let maxCircleOverlapPx = 0;
+        let maxWallPenetrationPx = 0;
+        let escapedCount = 0;
+
+        for (let i = 0; i < n; i++) {
+          const pi = particles[i];
+          radiiSet.add(LocalNumber(pi.r.toFixed(4)));
+          if (pi.r < minR) minR = pi.r;
+          if (pi.r > maxR) maxR = pi.r;
+
+          const rx = pi.x - cx;
+          const ry = pi.y - cy;
+          const u = rx * cosA + ry * sinA;
+          const v = -rx * sinA + ry * cosA;
+          const wAtV = wallHalfWidth(v, wNeck);
+          let sidePen = 0;
+          if (abs(u) > wAtV - pi.r * 1.95) {
+            const c = computeWallContact(u, v, pi.r, wNeck);
+            sidePen = max(0, pi.r - c.signedDist);
+          }
+          const topPen = max(0, (-H + pi.r) - v);
+          const botPen = max(0, v - (H - pi.r));
+          const pen = max(sidePen, topPen, botPen);
+          if (pen > maxWallPenetrationPx) maxWallPenetrationPx = pen;
+          if (abs(u) > wAtV + pi.r || abs(v) > H + pi.r) {
+            escapedCount++;
+          }
+
+          for (let j = i + 1; j < n; j++) {
+            const pj = particles[j];
+            const dx = pj.x - pi.x;
+            const dy = pj.y - pi.y;
+            const minDist = pi.r + pj.r;
+            if (abs(dx) >= minDist || abs(dy) >= minDist) continue;
+            const dist = sqrt(dx * dx + dy * dy);
+            const overlap = minDist - dist;
+            if (overlap > maxCircleOverlapPx) maxCircleOverlapPx = overlap;
+          }
+        }
+
+        cachedInvariants = {
+          particleCount: n,
+          uniqueRadiiCount: radiiSet.size,
+          minRadius: minR,
+          maxRadius: maxR,
+          maxCircleOverlapPx: max(0, maxCircleOverlapPx),
+          maxWallPenetrationPx: max(0, maxWallPenetrationPx),
+          escapedCount
+        };
+        invariantsDirty = false;
+        return cachedInvariants;
+      }
+
+      function getState() {
+        let topCount = 0;
+        let neckCount = 0;
+        let bottomCount = 0;
+        for (let i = 0; i < particles.length; i++) {
+          const dy = particles[i].y - cy;
+          if (Math.abs(dy) <= 10) {
+            neckCount++;
+          } else if (dy < 0) {
+            topCount++;
+          } else {
+            bottomCount++;
+          }
+        }
+        const flipCount = Math.floor(simTime / FLIP_PERIOD);
+        const nextFlipIn = Math.max(0, FLIP_PERIOD - (simTime % FLIP_PERIOD));
+        return {
+          simTime,
+          angle,
+          angularVelocity,
+          neckWidth,
+          flipCount,
+          nextFlipIn,
+          topCount,
+          neckCount,
+          bottomCount,
+          flowRate: crossingTimestamps.length / 2.0,
+          paused
+        };
+      }
+
+      function setNeckWidth(w) {
+        const clamped = Math.max(16, Math.min(76, Number(w) || 36));
+        neckWidth = clamped;
+        const slider = document.getElementById('neckWidthSlider');
+        if (slider) slider.value = String(Math.round(clamped));
+        projectPositionsExact(14);
+        updateHUD();
+      }
+
+      function reset() {
+        simTime = 0;
+        angle = 0;
+        angularVelocity = 0;
+        manualAngleOffset = 0;
+        manualFlipActive = false;
+        manualFlipElapsed = 0;
+        crossingTimestamps = [];
+        createParticles();
+        updateHUD();
+      }
+
+      function triggerFlip() {
+        if (!manualFlipActive) {
+          manualFlipActive = true;
+          manualFlipElapsed = 0;
+        }
+      }
+
+      function drawBackgroundDial() {
+        ctx.save();
+
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.045)';
+        ctx.lineWidth = 1;
+        for (let x = 50; x < canvas.width; x += 60) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, canvas.height);
+          ctx.stroke();
+        }
+        for (let y = 40; y < canvas.height; y += 60) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(canvas.width, y);
+          ctx.stroke();
+        }
+
+        ctx.translate(cx, cy);
+
+        const outerR = H + 56;
+        const innerR = H + 38;
+
+        ctx.beginPath();
+        ctx.arc(0, 0, outerR + 7, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(212, 155, 67, 0.22)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, outerR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(242, 201, 125, 0.36)';
+        ctx.lineWidth = 4.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 0, innerR, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.2)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        for (let deg = 0; deg < 360; deg += 5) {
+          const rad = (deg * Math.PI) / 180;
+          const isMajor = deg % 30 === 0;
+          const isMid = deg % 15 === 0;
+          const r0 = outerR - (isMajor ? 14 : isMid ? 9 : 5);
+          const r1 = outerR - 2;
+          ctx.beginPath();
+          ctx.moveTo(Math.cos(rad) * r0, Math.sin(rad) * r0);
+          ctx.lineTo(Math.cos(rad) * r1, Math.sin(rad) * r1);
+          ctx.strokeStyle = isMajor
+            ? 'rgba(242, 201, 125, 0.65)'
+            : isMid
+              ? 'rgba(212, 155, 67, 0.32)'
+              : 'rgba(148, 163, 184, 0.14)';
+          ctx.lineWidth = isMajor ? 1.8 : 1;
+          ctx.stroke();
+        }
+
+        for (const side of [-1, 1]) {
+          const px = side * outerR;
+          ctx.fillStyle = '#7c541a';
+          ctx.strokeStyle = '#f2c97d';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(px - 10, -14, 20, 28, 4);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(px, 0, 5, 0, Math.PI * 2);
+          ctx.fillStyle = '#fde68a';
+          ctx.fill();
+        }
+
+        if (Math.abs(angularVelocity) > 0.02) {
+          ctx.beginPath();
+          ctx.arc(0, 0, outerR + 13, angle - 0.55, angle + 0.55);
+          ctx.strokeStyle = 'rgba(94, 234, 212, 0.72)';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function traceWallPath(offsetWidth, wNeck) {
+        const steps = 64;
+        ctx.beginPath();
+        for (let i = 0; i <= steps; i++) {
+          const v = -H + (2 * H * i) / steps;
+          const u = wallHalfWidth(v, wNeck) + offsetWidth;
+          if (i === 0) ctx.moveTo(u, v);
+          else ctx.lineTo(u, v);
+        }
+        for (let i = steps; i >= 0; i--) {
+          const v = -H + (2 * H * i) / steps;
+          const u = -(wallHalfWidth(v, wNeck) + offsetWidth);
+          ctx.lineTo(u, v);
+        }
+        ctx.closePath();
+      }
+
+      function drawHourglassVessel() {
+        const wNeck = neckWidth * 0.5;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+
+        const rodX = W_BULB + 24;
+        for (const side of [-1, 1]) {
+          const x = side * rodX;
+          const rodGrad = ctx.createLinearGradient(x - 6, 0, x + 6, 0);
+          rodGrad.addColorStop(0, '#452708');
+          rodGrad.addColorStop(0.3, '#d49b43');
+          rodGrad.addColorStop(0.5, '#fef3c7');
+          rodGrad.addColorStop(0.75, '#b47826');
+          rodGrad.addColorStop(1, '#361e05');
+          ctx.fillStyle = rodGrad;
+          ctx.fillRect(x - 5, -H - 12, 10, 2 * H + 24);
+
+          for (const collarY of [-H + 14, -72, 0, 72, H - 14]) {
+            ctx.fillStyle = '#f2c97d';
+            ctx.strokeStyle = '#452708';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(x - 8, collarY - 4, 16, 8, 3);
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+
+        ctx.strokeStyle = 'rgba(212, 155, 67, 0.55)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(-rodX + 5, 0);
+        ctx.lineTo(-wNeck - 9, 0);
+        ctx.moveTo(wNeck + 9, 0);
+        ctx.lineTo(rodX - 5, 0);
+        ctx.stroke();
+
+        traceWallPath(0, wNeck);
+        const glassFill = ctx.createLinearGradient(-W_BULB, 0, W_BULB, 0);
+        glassFill.addColorStop(0, 'rgba(56, 189, 248, 0.10)');
+        glassFill.addColorStop(0.18, 'rgba(251, 191, 36, 0.05)');
+        glassFill.addColorStop(0.5, 'rgba(15, 23, 42, 0.22)');
+        glassFill.addColorStop(0.82, 'rgba(251, 191, 36, 0.05)');
+        glassFill.addColorStop(1, 'rgba(94, 234, 212, 0.11)');
+        ctx.fillStyle = glassFill;
+        ctx.fill();
+
+        traceWallPath(5.5, wNeck);
+        ctx.strokeStyle = 'rgba(212, 155, 67, 0.36)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        traceWallPath(2.2, wNeck);
+        ctx.strokeStyle = 'rgba(251, 191, 36, 0.48)';
+        ctx.lineWidth = 1.4;
+        ctx.stroke();
+
+        traceWallPath(0, wNeck);
+        ctx.strokeStyle = 'rgba(186, 230, 253, 0.78)';
+        ctx.lineWidth = 2.4;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        for (const vSign of [-1, 1]) {
+          ctx.beginPath();
+          for (let s = 38; s <= 165; s += 8) {
+            const v = vSign * s;
+            const u = -wallHalfWidth(v, wNeck) * 0.72;
+            if (s === 38) ctx.moveTo(u, v);
+            else ctx.lineTo(u, v);
+          }
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        const collarGrad = ctx.createLinearGradient(-wNeck - 12, 0, wNeck + 12, 0);
+        collarGrad.addColorStop(0, '#5c3a11');
+        collarGrad.addColorStop(0.5, '#fde68a');
+        collarGrad.addColorStop(1, '#5c3a11');
+        ctx.strokeStyle = collarGrad;
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.roundRect(-wNeck - 9, -7, 2 * (wNeck + 9), 14, 5);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(-wNeck, 0);
+        ctx.lineTo(wNeck, 0);
+        ctx.strokeStyle = 'rgba(94, 234, 212, 0.55)';
+        ctx.setLineDash([4, 4]);
+        ctx.lineWidth = 1.3;
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        for (const capSign of [-1, 1]) {
+          const capY = capSign * H;
+          const collarY = capSign < 0 ? capY - 6 : capY;
+          ctx.fillStyle = '#d49b43';
+          ctx.beginPath();
+          ctx.roundRect(-W_CAP - 8, collarY, 2 * (W_CAP + 8), 6, 2);
+          ctx.fill();
+
+          const yTop = capSign < 0 ? capY - 24 : capY + 2;
+          const capGrad = ctx.createLinearGradient(-W_BULB - 34, yTop, W_BULB + 34, yTop);
+          capGrad.addColorStop(0, '#23130c');
+          capGrad.addColorStop(0.18, '#5c341d');
+          capGrad.addColorStop(0.5, '#8c5230');
+          capGrad.addColorStop(0.82, '#4a2815');
+          capGrad.addColorStop(1, '#1e100a');
+          ctx.fillStyle = capGrad;
+          ctx.beginPath();
+          ctx.roundRect(-W_BULB - 34, yTop, 2 * (W_BULB + 34), 22, 6);
+          ctx.fill();
+          ctx.strokeStyle = '#f2c97d';
+          ctx.lineWidth = 1.7;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
+
+      function drawParticles() {
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          const pal = BEAD_PALETTES[p.materialIdx];
+
+          ctx.save();
+          ctx.translate(p.x, p.y);
+
+          const grad = ctx.createRadialGradient(-p.r * 0.34, -p.r * 0.34, p.r * 0.1, 0, 0, p.r);
+          grad.addColorStop(0, pal.hi);
+          grad.addColorStop(0.52, pal.mid);
+          grad.addColorStop(1, pal.lo);
+
+          ctx.beginPath();
+          ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = grad;
+          ctx.fill();
+
+          ctx.strokeStyle = pal.rim;
+          ctx.lineWidth = 0.75;
+          ctx.stroke();
+
+          ctx.save();
+          ctx.rotate(p.angle);
+          ctx.beginPath();
+          ctx.moveTo(-p.r * 0.58, 0);
+          ctx.lineTo(p.r * 0.58, 0);
+          ctx.strokeStyle = pal.band;
+          ctx.lineWidth = 1.15;
+          ctx.stroke();
+          ctx.restore();
+
+          ctx.beginPath();
+          ctx.arc(-p.r * 0.32, -p.r * 0.32, Math.max(0.9, p.r * 0.2), 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.72)';
+          ctx.fill();
+
+          ctx.restore();
+        }
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawBackgroundDial();
+        drawHourglassVessel();
+        drawParticles();
+      }
+
+      function updateHUD() {
+        const st = getState();
+        const inv = checkInvariants();
+
+        const neckBadge = document.getElementById('neckWidthValue');
+        if (neckBadge) neckBadge.textContent = `${Math.round(st.neckWidth)} px`;
+
+        const countdown = document.getElementById('flipCountdownBadge');
+        if (countdown) countdown.textContent = `Next Flip: ${st.nextFlipIn.toFixed(1)}s`;
+
+        const cycleFrac = (simTime % FLIP_PERIOD) / FLIP_PERIOD;
+        const fill = document.getElementById('flipProgressFill');
+        if (fill) {
+          fill.style.width = `${(cycleFrac * 100).toFixed(1)}%`;
+        }
+
+        const arcCircle = document.getElementById('flipArcCircle');
+        if (arcCircle && arcCircle.style) {
+          const circumference = 307.88;
+          const offset = circumference * (1 - cycleFrac);
+          arcCircle.style.strokeDashoffset = offset.toFixed(2);
+        }
+
+        const degVal = document.getElementById('angleDegValue');
+        if (degVal) degVal.textContent = `${((st.angle * 180) / Math.PI).toFixed(1)}°`;
+
+        const flipCountEl = document.getElementById('flipCountValue');
+        if (flipCountEl) flipCountEl.textContent = String(st.flipCount);
+
+        const flowBadge = document.getElementById('flowRateBadge');
+        if (flowBadge) flowBadge.textContent = `${st.flowRate.toFixed(1)} grains/s`;
+
+        const topEl = document.getElementById('topCountValue');
+        if (topEl) topEl.textContent = String(st.topCount);
+
+        const neckEl = document.getElementById('neckCountValue');
+        if (neckEl) neckEl.textContent = String(st.neckCount);
+
+        const botEl = document.getElementById('bottomCountValue');
+        if (botEl) botEl.textContent = String(st.bottomCount);
+
+        const barTop = document.getElementById('barTop');
+        const barNeck = document.getElementById('barNeck');
+        const barBottom = document.getElementById('barBottom');
+        if (barTop && barNeck && barBottom) {
+          barTop.style.width = `${(st.topCount / PARTICLE_COUNT) * 100}%`;
+          barNeck.style.width = `${(st.neckCount / PARTICLE_COUNT) * 100}%`;
+          barBottom.style.width = `${(st.bottomCount / PARTICLE_COUNT) * 100}%`;
+        }
+
+        const overlapEl = document.getElementById('maxOverlapValue');
+        if (overlapEl) overlapEl.textContent = `${inv.maxCircleOverlapPx.toFixed(3)} px`;
+
+        const wallPenEl = document.getElementById('maxWallPenValue');
+        if (wallPenEl) wallPenEl.textContent = `${inv.maxWallPenetrationPx.toFixed(3)} px`;
+
+        const radEl = document.getElementById('radiusRangeValue');
+        if (radEl) radEl.textContent = `${inv.minRadius.toFixed(1)}–${inv.maxRadius.toFixed(1)} px`;
+
+        const escEl = document.getElementById('escapedCountValue');
+        if (escEl) escEl.textContent = `${inv.escapedCount} / ${inv.particleCount}`;
+
+        const clockEl = document.getElementById('simClockReadout');
+        if (clockEl) clockEl.textContent = `SIM TIME: ${st.simTime.toFixed(2)}s`;
+
+        const poseEl = document.getElementById('vesselPoseReadout');
+        if (poseEl) {
+          poseEl.textContent = `POSE: ${((st.angle * 180) / Math.PI).toFixed(1)}° · ω: ${st.angularVelocity.toFixed(2)} rad/s`;
+        }
+
+        const fpsEl = document.getElementById('fpsReadout');
+        if (fpsEl) fpsEl.textContent = `${Math.round(fpsSmooth)} FPS`;
+      }
+
+      function bindUI() {
+        const neckSlider = document.getElementById('neckWidthSlider');
+        if (neckSlider) {
+          neckSlider.addEventListener('input', (e) => {
+            setNeckWidth(parseFloat(e.target.value));
+          });
+        }
+
+        const presetIds = [
+          { id: 'presetNarrow', val: 20 },
+          { id: 'presetStandard', val: 36 },
+          { id: 'presetWide', val: 68 }
+        ];
+        presetIds.forEach((item) => {
+          const btn = document.getElementById(item.id);
+          if (btn) {
+            btn.addEventListener('click', () => {
+              setNeckWidth(item.val);
+              presetIds.forEach((other) => {
+                const ob = document.getElementById(other.id);
+                if (ob) ob.classList.toggle('active', other.id === item.id);
+              });
+            });
+          }
+        });
+
+        const gravSlider = document.getElementById('gravitySlider');
+        const gravBadge = document.getElementById('gravityValue');
+        if (gravSlider) {
+          gravSlider.addEventListener('input', (e) => {
+            gravity = parseFloat(e.target.value) || 680;
+            if (gravBadge) gravBadge.textContent = `${Math.round(gravity)} px/s²`;
+          });
+        }
+
+        const flipNowBtn = document.getElementById('flipNowBtn');
+        if (flipNowBtn) {
+          flipNowBtn.addEventListener('click', () => {
+            triggerFlip();
+          });
+        }
+
+        const pauseBtn = document.getElementById('pauseBtn');
+        if (pauseBtn) {
+          pauseBtn.addEventListener('click', () => {
+            paused = !paused;
+            pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+          });
+        }
+
+        const resetBtn = document.getElementById('resetBtn');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', () => {
+            reset();
+          });
+        }
+      }
+
+      const perf = performance;
+      window.hourglassSim = {
+        getParticles: () => particles.map((p) => ({ ...p })),
+        getState,
+        setNeckWidth,
+        step: (dt = 1 / 60) => {
+          step(dt);
+          if (perf.now() > 0) {
+            render();
+            updateHUD();
+          }
+        },
+        reset: () => {
+          reset();
+          render();
+        },
+        triggerFlip,
+        checkInvariants
+      };
+
+      bindUI();
+      reset();
+      render();
+
+      let lastTime = performance.now();
+      function animate(now) {
+        const rawDt = Math.max(0.001, (now - lastTime) / 1000);
+        lastTime = now;
+        fpsSmooth = fpsSmooth * 0.9 + (1 / rawDt) * 0.1;
+        if (!paused) {
+          step(Math.min(rawDt, 1 / 30));
+        }
+        render();
+        updateHUD();
+        requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
