@@ -910,7 +910,7 @@
             const tx = -ny;
             const ty = nx;
             const vt = rvx * tx + rvy * ty + (pi.omega * pi.r + pj.omega * pj.r) * 0.25;
-            const mu = wNeck < 14 ? 0.12 : 0.025;
+            const mu = 0.025;
             const jtMax = mu * jn;
             const jt = max(-jtMax, min(jtMax, -vt / invMassSum));
             pi.vx -= jt * tx * pi.invMass;
@@ -952,7 +952,7 @@
                 const tx = -ny;
                 const ty = nx;
                 const vt = rvx * tx + rvy * ty;
-                const mu = (abs(v) < 35 && wNeck < 14) ? 0.14 : 0.02;
+                const mu = (abs(v) <= 9 && wNeck < 14) ? 0.08 : 0.02;
                 const jt = max(-mu * jn, min(mu * jn, -vt));
                 p.vx += jt * tx;
                 p.vy += jt * ty;
@@ -1051,13 +1051,16 @@
               const limitUi = maxSafeAbsU(vArr[i], pi.r, wNeck);
               const limitUj = maxSafeAbsU(vArr[j], pj.r, wNeck);
               const corridorSpan = limitUi + limitUj;
-              if (corridorSpan < minDist + 0.8 && abs(dv) < minDist) {
-                const reqDv = sqrt(max(0.01, minDist * minDist - min(du * du, corridorSpan * corridorSpan * 0.9)));
+              if (corridorSpan < minDist + 0.6 && abs(dv) < minDist && abs(vArr[i]) < 16 && abs(vArr[j]) < 16) {
+                const reqDv = sqrt(max(0.01, minDist * minDist - min(du * du, corridorSpan * corridorSpan * 0.92)));
                 const dirV = dv > 1e-5 ? 1 : (dv < -1e-5 ? -1 : (i < j ? -1 : 1));
                 const penV = max(0, reqDv - abs(dv));
                 if (penV > maxPen) maxPen = penV;
-                vArr[i] -= dirV * penV * wi;
-                vArr[j] += dirV * penV * wj;
+                const upperIsI = (dirV * gSign) > 0;
+                const wI = upperIsI ? 0.82 : 0.18;
+                const wJ = upperIsI ? 0.18 : 0.82;
+                vArr[i] -= dirV * penV * wI;
+                vArr[j] += dirV * penV * wJ;
                 du = uArr[j] - uArr[i];
                 dv = vArr[j] - vArr[i];
                 d2 = du * du + dv * dv;
@@ -1152,9 +1155,9 @@
             const ry = p.y - cy;
             const u = rx * cosA + ry * sinA;
             const v = -rx * sinA + ry * cosA;
-            if (abs(v) < 46 && wNeck < 16) {
-              const squeeze = max(0, (16 - wNeck) / 6);
-              const damp = 1 / (1 + squeeze * squeeze * 45 * dtSub);
+            if (abs(v) <= 8.5 && wNeck < 15 && abs(u) > wNeck - p.r - 1.2) {
+              const throatSqueeze = max(0, (15 - wNeck) / 5);
+              const damp = 1 / (1 + throatSqueeze * 18 * dtSub);
               p.vx *= damp;
               p.vy *= damp;
             } else if (p.y < cy - 3 && abs(u) > 3 && abs(v) < V_SHOULDER && wNeck >= 16 && abs(angularVelocity) < 0.05) {
